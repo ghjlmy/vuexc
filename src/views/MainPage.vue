@@ -73,7 +73,7 @@
         <nav class="flex-1 py-2 overflow-y-auto scrollbar-hide">
           <ul class="space-y-0.5">
             <li>
-              <button @click="$router.push('/main')" class="bg-primary text-white  menu-item w-full text-left px-3 py-2 rounded-md flex items-center gap-2  hover:bg-gray-50 transition-all">
+              <button @click="$router.push('/main')" class="bg-primary text-white  menu-item w-full text-left px-3 py-2 rounded-md flex items-center gap-2   transition-all">
                 <i class="fa fa-map-o w-5 text-center"></i>
                 主地图
               </button>
@@ -219,7 +219,7 @@
         <div class="p-3 border-b border-gray-200">
           <div class="flex items-center justify-between mb-1.5">
             <span class="text-xs text-gray-dark flex items-center gap-1"><i class="fa fa-battery-three-quarters text-success"></i>电池</span>
-            <span id="batteryText" class="text-xs font-medium text-gray-dark">{{ battery }}%</span>
+            <span id="batteryText" class="text-xs font-medium text-gray-dark">{{ battery.toFixed(1) }}%</span>
           </div>
           <div class="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
             <div id="batteryBar" :class="battery < 20 ? 'bg-danger' : (battery <50 ? 'bg-warning' : 'bg-success')" class="h-full transition-all duration-300" :style="{ width: battery + '%' }"></div>
@@ -382,7 +382,7 @@ export default {
           }
         }
 
-        this.battery -= 0.01;
+        this.battery -= 0.1;
         const speed = document.getElementById("speed");
         const angularVelocity = document.getElementById("angular-velocity");
         const current = document.getElementById("current");
