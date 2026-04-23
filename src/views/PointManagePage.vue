@@ -26,14 +26,8 @@
       <!-- 地图区域 -->
       <section class="flex-1 bg-white m-4 rounded shadow-sm overflow-hidden relative">
         <div class="w-full h-full relative overflow-hidden">
+          <img src="/src/assets/image.png" alt="地图背景" class="w-full h-full object-cover" />
           <svg class="absolute inset-0 w-full h-full" @click="handleMapClick">
-            <!-- 网格背景 -->
-            <defs>
-              <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
-                <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#e5e7eb" stroke-width="1" />
-              </pattern>
-            </defs>
-            <rect width="100%" height="100%" fill="url(#grid)" />
 
             <!-- 点位渲染 -->
             <g v-for="point in points" :key="point.id">

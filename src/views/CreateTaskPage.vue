@@ -180,13 +180,8 @@
 
         <div class="flex-1 m-4 bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
           <div class="h-full relative">
+            <img src="/src/assets/image.png" alt="地图背景" class="w-full h-full object-cover" />
             <svg class="absolute inset-0 w-full h-full" @click="handleMapAddStep">
-              <defs>
-                <pattern id="grid-create" width="40" height="40" patternUnits="userSpaceOnUse">
-                  <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#e5e7eb" stroke-width="1" />
-                </pattern>
-              </defs>
-              <rect width="100%" height="100%" fill="url(#grid-create)" />
               
               <g v-for="point in pointsList" :key="point.id">
                 <circle

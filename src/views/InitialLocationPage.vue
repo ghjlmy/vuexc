@@ -19,13 +19,8 @@
     <main class="flex-1 flex overflow-hidden">
       <section class="flex-1 relative overflow-hidden bg-white border-r border-gray-200">
         <div class="absolute inset-0">
-          <svg id="mapSvg" class="w-full h-full" @click="handleMapClick">
-            <defs>
-              <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
-                <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#e5e7eb" stroke-width="1"/>
-              </pattern>
-            </defs>
-            <rect width="100%" height="100%" fill="url(#grid)"/>
+          <img src="/src/assets/image.png" alt="地图背景" class="w-full h-full object-cover" />
+          <svg id="mapSvg" class="absolute inset-0 w-full h-full" @click="handleMapClick">
 
             <g id="pathsLayer">
               <path d="M 180 380 L 220 380 L 220 250 L 280 250 L 280 450 L 380 450" stroke="#4080FF" stroke-width="3" fill="none" stroke-dasharray="8,4" opacity="0.9"/>

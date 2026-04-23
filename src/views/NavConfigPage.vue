@@ -380,6 +380,34 @@
                 </h3>
               </div>
               <div class="p-4 space-y-4">
+                <div class="flex items-center gap-4">
+                  <label class="flex-1 text-sm text-gray-700"
+                    >前方避障距离 (单位: 米)</label
+                  >
+                  <div class="flex items-center gap-3 w-96">
+                    <input
+                      type="range"
+                      id="lidar-front-avoid-distance"
+                      min="0"
+                      max="5"
+                      step="0.1"
+                      value="1.5"
+                      class="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-primary"
+                    />
+                    <input
+                      type="number"
+                      id="lidar-front-avoid-distance-value"
+                      value="1.5"
+                      min="0"
+                      max="5"
+                      step="0.1"
+                      class="w-16 px-2 py-1 text-sm border border-gray-300 rounded text-center"
+                    />
+                  </div>
+                  <div class="w-8 flex justify-center">
+                    <i class="fa fa-check-circle text-success"></i>
+                  </div>
+                </div>
                 <!-- 避障开关 -->
                 <div class="flex items-center gap-4">
                   <label class="flex-1 text-sm text-gray-700"

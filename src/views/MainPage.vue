@@ -117,8 +117,7 @@
 
       <main class="flex-1 relative bg-gray-50 overflow-hidden">
         <div id="mapContainer" class="w-full h-full relative bg-white border border-gray-200">
-          <div class="absolute inset-0 opacity-40" style="background-image: linear-gradient(#e5e7eb 1px, transparent 1px), linear-gradient(90deg, #e5e7eb 1px, transparent 1px); background-size: 40px 40px;"></div>
-
+          <img src="/src/assets/image.png" alt="地图背景" class="w-full h-full object-cover" />
           <svg id="mapSvg" class="absolute inset-0 w-full h-full">
             <g id="routesLayer">
               <defs>

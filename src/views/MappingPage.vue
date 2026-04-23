@@ -75,21 +75,9 @@
           <section
             class="flex-1 bg-white m-2 rounded shadow-sm overflow-hidden relative"
           >
-            <!-- 室内激光地图背景 -->
-            <div class="w-full h-full relative laser-map-bg">
-              <!-- 激光扫描动画效果 -->
-              <div class="laser-scan"></div>
-
-              <!-- 模拟室内墙体（简单示例） -->
-              <div
-                class="absolute top-[10%] left-[10%] w-[80%] h-[80%] border-2 border-primary/30 rounded-sm"
-              ></div>
-              <div
-                class="absolute top-[20%] left-[20%] w-[20%] h-[60%] bg-primary/5"
-              ></div>
-              <div
-                class="absolute top-[20%] right-[20%] w-[20%] h-[60%] bg-primary/5"
-              ></div>
+            <!-- 地图背景 -->
+            <div class="w-full h-full relative">
+              <img src="/src/assets/image.png" alt="地图背景" class="w-full h-full object-cover" />
 
               <!-- 建图状态提示 -->
               <div

@@ -31,12 +31,13 @@
 
     <main class="flex-1 flex overflow-hidden">
       <section 
-        class="flex-1 relative grid-bg overflow-auto"
+        class="flex-1 relative overflow-auto"
         :style="{cursor: isRecording ? 'crosshair' : 'default'}"
         @click="handleMapClick"
         @dblclick="finishRecording"
         @contextmenu.prevent="undoRecordingPoint"
       >
+        <img src="/src/assets/image.png" alt="地图背景" class="absolute inset-0 w-full h-full object-cover" />
         <div v-for="point in allPoints" :key="point.id" 
           class="map-point"
           :class="{

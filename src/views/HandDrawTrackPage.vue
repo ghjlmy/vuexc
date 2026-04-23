@@ -18,16 +18,13 @@
 
     <main class="flex-1 flex overflow-hidden">
       <section class="flex-1 bg-white m-4 rounded shadow-sm overflow-hidden relative">
+        <img src="/src/assets/image.png" alt="地图背景" class="w-full h-full object-cover" />
         <svg class="absolute inset-0 w-full h-full" @click="handleMapClick" @contextmenu.prevent="handleRightClick" @dblclick="finishCreate">
           <defs>
-            <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
-              <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#e5e7eb" stroke-width="1" />
-            </pattern>
             <marker id="arrow" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
               <polygon points="0 0, 10 3.5, 0 7" fill="currentColor" />
             </marker>
           </defs>
-          <rect width="100%" height="100%" fill="url(#grid)" />
 
           <g v-for="track in tracks" :key="track.id">
             <path

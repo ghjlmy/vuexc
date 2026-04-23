@@ -36,7 +36,8 @@
           </div>
           
           <div class="flex-1 bg-gray-50 rounded-lg border border-gray-200 relative overflow-hidden">
-            <canvas id="virtual-wall-canvas" class="w-full h-full cursor-crosshair"></canvas>
+            <img id="virtual-wall-bg" src="/src/assets/image.png" alt="地图背景" class="absolute inset-0 w-full h-full object-cover" />
+            <canvas id="virtual-wall-canvas" class="w-full h-full cursor-crosshair relative z-10"></canvas>
           </div>
           <div class="mt-3 text-xs text-gray-500 space-y-1 bg-blue-50 p-3 rounded-lg">
             <p><i class="fa fa-info-circle text-primary mr-1"></i> 左键点击绘制 / 双击完成绘制</p>
@@ -266,6 +267,7 @@ export default {
       const container = this.canvas.parentElement;
       this.canvas.width = container.clientWidth;
       this.canvas.height = container.clientHeight;
+      this.canvas.style.backgroundColor = 'transparent';
       this.drawAll();
     },
     handleResize() {
@@ -276,21 +278,7 @@ export default {
       this.drawAll();
     },
     drawGrid() {
-      if (!this.ctx || !this.canvas) return;
-      this.ctx.strokeStyle = '#e4e7ed';
-      this.ctx.lineWidth = 0.5;
-      for (let x = 0; x < this.canvas.width; x += 20) {
-        this.ctx.beginPath();
-        this.ctx.moveTo(x, 0);
-        this.ctx.lineTo(x, this.canvas.height);
-        this.ctx.stroke();
-      }
-      for (let y = 0; y < this.canvas.height; y += 20) {
-        this.ctx.beginPath();
-        this.ctx.moveTo(0, y);
-        this.ctx.lineTo(this.canvas.width, y);
-        this.ctx.stroke();
-      }
+      // 背景图片已在 HTML 中设置，不再绘制网格
     },
     getCurrentConfig() {
       switch(this.currentTab) {
@@ -391,7 +379,6 @@ export default {
       if (!this.ctx || !this.canvas) return;
       
       this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-      this.drawGrid();
       
       this.savedShapes.forEach(shape => {
         this.drawShape(shape);
