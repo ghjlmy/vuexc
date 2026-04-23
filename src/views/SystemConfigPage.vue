@@ -135,7 +135,8 @@
 
           <!-- 右侧内容区 -->
           <section
-            class="flex-1 bg-white border-l border-gray-200 overflow-y-auto"
+            class="flex-1 bg-white border-l border-gray-200  overflow-y-auto"
+            style="height: calc(100vh - 60px);"
           >
             <!-- 固件升级内容 -->
 
@@ -411,7 +412,7 @@
                 </div>
               </div>
               
-              <div id="content-firmware" class="p-6">
+              <div class="p-6">
                  <h3 class="font-semibold text-slate-800 mb-4">固件升级</h3>
                         <div class="space-y-4">
                             <div class="flex items-center gap-4">

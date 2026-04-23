@@ -1,4 +1,4 @@
-﻿<template>
+﻿﻿<template>
   <div class="flex flex-col h-screen">
     <!-- 顶部导航栏 -->
     <header class="bg-white shadow-sm border-b border-gray-200 px-4 py-2 flex items-center justify-between z-20 flex-shrink-0">
