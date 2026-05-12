@@ -11,13 +11,46 @@
       </div>
       <div class="flex items-center gap-3">
         <button
-          @click="togglePathRecording()"
-          :class="isRecording ? 'bg-danger' : 'bg-primary'"
-          class="hover:opacity-90 text-white px-4 py-1.5 rounded flex items-center gap-1 transition"
+          v-if="!isRecording"
+          @click="startRecording()"
+          class="bg-primary hover:opacity-90 text-white px-4 py-1.5 rounded flex items-center gap-1 transition"
         >
-          <!-- <i :class="isRecording ? 'fa-stop' : 'fa-circle'"></i> -->
-          <span>{{ isRecording ? '停止录制' : '开始录制' }}</span>
+          <i class="fa fa-circle"></i>
+          <span>开始录制</span>
         </button>
+        <template v-else>
+          <button
+            v-if="recordingStep === 1"
+            @click="confirmStartPoint()"
+            class="bg-success hover:opacity-90 text-white px-4 py-1.5 rounded flex items-center gap-1 transition"
+          >
+            <i class="fa fa-check"></i>
+            <span>确定起点</span>
+          </button>
+          <button
+            v-if="recordingStep === 2"
+            @click="confirmEndPoint()"
+            class="bg-danger hover:opacity-90 text-white px-4 py-1.5 rounded flex items-center gap-1 transition"
+          >
+            <i class="fa fa-stop"></i>
+            <span>确定终点</span>
+          </button>
+          <button
+            v-if="recordingStep === 3"
+            @click="saveRecording()"
+            class="bg-success hover:opacity-90 text-white px-4 py-1.5 rounded flex items-center gap-1 transition"
+          >
+            <i class="fa fa-save"></i>
+            <span>保存录制</span>
+          </button>
+          <button
+            @click="cancelRecording()"
+            class="bg-gray-500 hover:opacity-90 text-white px-4 py-1.5 rounded flex items-center gap-1 transition"
+          >
+            <i class="fa fa-times"></i>
+            <span>取消</span>
+          </button>
+        </template>
       </div>
       <div class="flex items-center gap-2">
         <button @click="showAddDialog = true" class="bg-primary text-white px-3 py-1 rounded text-sm flex items-center gap-1">
@@ -30,15 +63,13 @@
     </header>
 
     <main class="flex-1 flex overflow-hidden">
-      <section 
+      <section
         class="flex-1 relative overflow-auto"
         :style="{cursor: isRecording ? 'crosshair' : 'default'}"
         @click="handleMapClick"
-        @dblclick="finishRecording"
-        @contextmenu.prevent="undoRecordingPoint"
       >
         <img src="/src/assets/image.png" alt="地图背景" class="absolute inset-0 w-full h-full object-cover" />
-        <div v-for="point in allPoints" :key="point.id" 
+        <div v-for="point in allPoints" :key="point.id"
           class="map-point"
           :class="{
             'map-point-start': point.type === 'start',
@@ -47,7 +78,7 @@
           }"
           :style="{left: point.x + 'px', top: point.y + 'px'}"
         ></div>
-        <div v-for="point in allPoints" :key="'text-' + point.id" 
+        <div v-for="point in allPoints" :key="'text-' + point.id"
           class="map-point-text"
           :style="{left: point.x + 'px', top: point.y + 'px'}"
         >
@@ -70,65 +101,162 @@
             :stroke="path.color"
             stroke-width="3"
             fill="none"
-            :stroke-dasharray="path.direction === 'bidirectional' ? '8,4' : ''"
-            :marker-end="path.direction === 'single' ? 'url(#path-arrow)' : ''"
+            :marker-end="path.direction === 'forward' ? 'url(#path-arrow)' : (path.direction === 'reverse' ? 'url(#path-arrow-green)' : '')"
             :class="['cursor-pointer', {'opacity-50': selectedPathId && selectedPathId !== path.id, 'stroke-4': selectedPathId === path.id}]"
             @click.stop="selectPath(path.id)"
           />
           <path
-            v-if="recordingPoints.length > 1"
-            :d="recordingSvgPath"
+            v-if="isRecording && tempPath"
+            :d="tempPath"
             stroke="#f56c6c"
             stroke-width="4"
             stroke-dasharray="10,5"
             fill="none"
             opacity="0.8"
           />
+          <circle
+            v-if="recordingStartPoint"
+            :cx="recordingStartPoint.x"
+            :cy="recordingStartPoint.y"
+            r="12"
+            fill="#67c23a"
+            stroke="white"
+            stroke-width="3"
+            class="animate-pulse"
+          />
+          <text
+            v-if="recordingStartPoint"
+            :x="recordingStartPoint.x"
+            :y="recordingStartPoint.y + 25"
+            text-anchor="middle"
+            fill="#67c23a"
+            font-size="12"
+            font-weight="bold"
+          >起点</text>
+          <circle
+            v-if="recordingEndPoint"
+            :cx="recordingEndPoint.x"
+            :cy="recordingEndPoint.y"
+            r="12"
+            fill="#f56c6c"
+            stroke="white"
+            stroke-width="3"
+            class="animate-pulse"
+          />
+          <text
+            v-if="recordingEndPoint"
+            :x="recordingEndPoint.x"
+            :y="recordingEndPoint.y + 25"
+            text-anchor="middle"
+            fill="#f56c6c"
+            font-size="12"
+            font-weight="bold"
+          >终点</text>
         </svg>
 
-        <div class="absolute top-4 right-80 flex items-center gap-2 bg-white p-2 rounded border border-gray-light shadow-lg">
-          <span class="text-xs text-gray-deep mr-2">路径编辑</span>
-          <!-- <button @click="addPathMode = !addPathMode" :class="addPathMode ? 'bg-primary' : 'bg-gray-200'" class="w-7 h-7 rounded text-white flex items-center justify-center text-sm" title="添加路径">
-            <i class="fa fa-plus"></i>
-          </button>
-          <button @click="editPathMode = !editPathMode" :class="editPathMode ? 'bg-warning' : 'bg-gray-200'" class="w-7 h-7 rounded text-white flex items-center justify-center text-sm" title="编辑路径">
-            <i class="fa fa-pencil"></i>
-          </button> -->
-          <button @click="deleteSelectedPath" class="w-7 h-7 rounded bg-danger text-white flex items-center justify-center text-sm" title="删除路径">
-            <i class="fa fa-trash"></i>
-          </button>
-        </div>
-
-        <div v-if="isRecording" class="absolute top-20 left-1/2 -translate-x-1/2 bg-danger/90 text-white px-4 py-2 rounded shadow-lg text-sm">
-          <i class="fa fa-circle text-xs animate-pulse mr-2"></i>正在录制路径... 点击添加点，双击结束，右键撤销
+        <div v-if="isRecording" class="absolute top-20 left-1/2 -translate-x-1/2 bg-primary/90 text-white px-4 py-2 rounded shadow-lg text-sm">
+          <i class="fa fa-circle text-xs animate-pulse mr-2"></i>
+          <span v-if="recordingStep === 1">请在地图上点击确定起点</span>
+          <span v-if="recordingStep === 2">请在地图上点击确定终点</span>
+          <span v-if="recordingStep === 3">已生成路径，点击保存录制</span>
         </div>
       </section>
 
       <aside class="right-panel">
         <div class="panel-card">
-          <div class="panel-title">
-            <i class="fa fa-road text-primary"></i>
-            路径列表
-          </div>
-          <div class="max-h-48 overflow-y-auto space-y-2">
-            <div 
-              v-for="path in paths" 
-              :key="path.id"
-              @click="selectPath(path.id)"
-              :class="['p-2 rounded cursor-pointer text-sm', selectedPathId === path.id ? 'bg-primary/10 border border-primary' : 'bg-gray-50 hover:bg-gray-100']"
+          <div class="flex border-b border-gray-200 mb-3">
+            <button
+              @click="pathTab = 'path'"
+              :class="pathTab === 'path' ? 'text-primary border-b-2 border-primary font-semibold' : 'text-gray-500'"
+              class="flex-1 py-2 text-sm text-center transition"
             >
-              <div class="flex items-center justify-between">
-                <div class="flex items-center gap-2">
-                  <span class="w-3 h-3 rounded-full" :style="{backgroundColor: path.color}"></span>
-                  <span class="font-medium">{{ path.name }}</span>
+              路径
+            </button>
+            <button
+              @click="pathTab = 'pathLine'"
+              :class="pathTab === 'pathLine' ? 'text-primary border-b-2 border-primary font-semibold' : 'text-gray-500'"
+              class="flex-1 py-2 text-sm text-center transition"
+            >
+              路径线
+            </button>
+          </div>
+
+          <div v-if="pathTab === 'path'">
+            <div class="max-h-48 overflow-y-auto space-y-2">
+              <div
+                v-for="path in pathsWithEndpoints"
+                :key="path.id"
+                @click="selectPath(path.id)"
+                :class="['p-2 rounded cursor-pointer text-sm', selectedPathId === path.id ? 'bg-primary/10 border border-primary' : 'bg-gray-50 hover:bg-gray-100']"
+              >
+                <div class="flex items-center justify-between">
+                  <div class="flex items-center gap-2">
+                    <span class="w-3 h-3 rounded-full" :style="{backgroundColor: path.color}"></span>
+                    <span class="font-medium">{{ path.name }}</span>
+                  </div>
+                  <span :class="['text-xs px-1.5 py-0.5 rounded', path.direction === 'forward' ? 'bg-blue-100 text-blue-600' : (path.direction === 'reverse' ? 'bg-green-100 text-green-600' : 'bg-gray-100 text-gray-600')]">
+                    {{ path.direction === 'forward' ? '正向' : (path.direction === 'reverse' ? '反向' : '双向') }}
+                  </span>
                 </div>
-                <span :class="['text-xs px-1.5 py-0.5 rounded', path.direction === 'single' ? 'bg-blue-100 text-blue-600' : 'bg-green-100 text-green-600']">
-                  {{ path.direction === 'single' ? '单线' : '双向' }}
-                </span>
+                <div class="text-xs text-gray-500 mt-1">
+                  起点: {{ path.startName || '-' }} → 终点: {{ path.endName || '-' }}
+                </div>
               </div>
-              <div class="text-xs text-gray-500 mt-1">{{ path.points.length }} 个节点</div>
             </div>
           </div>
+
+          <div v-else>
+            <div class="max-h-48 overflow-y-auto space-y-2">
+              <div
+                v-for="path in pathLinesWithoutEndpoints"
+                :key="path.id"
+                @click="selectPath(path.id)"
+                :class="['p-2 rounded cursor-pointer text-sm', selectedPathId === path.id ? 'bg-primary/10 border border-primary' : 'bg-gray-50 hover:bg-gray-100']"
+              >
+                <div class="flex items-center justify-between">
+                  <div class="flex items-center gap-2">
+                    <span class="w-3 h-3 rounded-full" :style="{backgroundColor: path.color}"></span>
+                    <span class="font-medium">{{ path.name }}</span>
+                  </div>
+                  <span :class="['text-xs px-1.5 py-0.5 rounded', path.direction === 'forward' ? 'bg-blue-100 text-blue-600' : (path.direction === 'reverse' ? 'bg-green-100 text-green-600' : 'bg-gray-100 text-gray-600')]">
+                    {{ path.direction === 'forward' ? '正向' : (path.direction === 'reverse' ? '反向' : '双向') }}
+                  </span>
+                </div>
+                <div class="text-xs text-gray-500 mt-1">{{ path.points.length }} 个节点</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel-card">
+          <div class="panel-title">
+            <i class="fa fa-map-marker text-primary"></i>
+            点列表
+          </div>
+          <div class="max-h-40 overflow-y-auto space-y-1">
+            <div
+              v-for="point in allPoints"
+              :key="point.id"
+              @click="selectPointForConnect(point)"
+              :class="['flex items-center justify-between p-2 rounded text-xs cursor-pointer', selectedConnectPointId === point.id ? 'bg-primary/10 border border-primary' : 'hover:bg-gray-50']"
+            >
+              <div class="flex items-center gap-2">
+                <div class="w-2.5 h-2.5 rounded-full" :class="point.type === 'start' ? 'bg-success' : (point.type === 'end' ? 'bg-danger' : 'bg-primary')"></div>
+                <span>{{ point.name }}</span>
+              </div>
+              <span class="text-gray-400">{{ point.x }}, {{ point.y }}</span>
+            </div>
+          </div>
+          <div v-if="selectedConnectPointId" class="mt-2 text-xs text-primary">
+            <i class="fa fa-info-circle mr-1"></i>已选择 {{ getSelectedConnectPointName() }}，再选一个点连线
+          </div>
+          <button
+            v-if="connectPointFirst && selectedConnectPointId && connectPointFirst !== selectedConnectPointId"
+            @click="createPathLineFromPoints"
+            class="mt-2 w-full py-1.5 bg-primary text-white rounded text-xs hover:bg-primary/90 transition"
+          >
+            <i class="fa fa-link mr-1"></i>创建路径线
+          </button>
         </div>
 
         <div class="panel-card" v-if="selectedPathId">
@@ -146,29 +274,29 @@
               />
             </div>
             <div class="space-y-1">
-              <label class="text-xs text-gray-deep">路径方向</label>
+              <label class="text-xs text-gray-deep">行驶方向</label>
               <div class="flex gap-2">
                 <button
-                  @click="selectedPath.direction = 'single'"
-                  :class="selectedPath.direction === 'single' ? 'bg-primary text-white' : 'bg-gray-200 text-gray-700'"
+                  @click="selectedPath.direction = 'forward'"
+                  :class="selectedPath.direction === 'forward' ? 'bg-primary text-white' : 'bg-gray-200 text-gray-700'"
                   class="flex-1 px-2 py-1 rounded text-xs"
                 >
-                  单线
+                  正向
                 </button>
                 <button
-                  @click="selectedPath.direction = 'bidirectional'"
-                  :class="selectedPath.direction === 'bidirectional' ? 'bg-success text-white' : 'bg-gray-200 text-gray-700'"
+                  @click="selectedPath.direction = 'reverse'"
+                  :class="selectedPath.direction === 'reverse' ? 'bg-success text-white' : 'bg-gray-200 text-gray-700'"
                   class="flex-1 px-2 py-1 rounded text-xs"
                 >
-                  双向
+                  反向
                 </button>
               </div>
             </div>
             <div class="space-y-1">
               <label class="text-xs text-gray-deep">路径颜色</label>
               <div class="flex gap-2">
-                <button 
-                  v-for="color in pathColors" 
+                <button
+                  v-for="color in pathColors"
                   :key="color"
                   @click="selectedPath.color = color"
                   class="w-7 h-7 rounded"
@@ -209,9 +337,9 @@
               <span class="stats-value">{{ selectedPath.points.length }} 个</span>
             </div>
             <div class="stats-item">
-              <span>路径类型</span>
-              <span class="stats-value" :class="selectedPath.direction === 'single' ? 'text-primary' : 'text-success'">
-                {{ selectedPath.direction === 'single' ? '单线' : '双向' }}
+              <span>行驶方向</span>
+              <span class="stats-value" :class="selectedPath.direction === 'forward' ? 'text-primary' : 'text-success'">
+                {{ selectedPath.direction === 'forward' ? '正向' : (selectedPath.direction === 'reverse' ? '反向' : '双向') }}
               </span>
             </div>
             <div class="stats-item">
@@ -232,31 +360,13 @@
               <span class="stats-value">{{ paths.length }}</span>
             </div>
             <div class="stats-item">
-              <span>单线路径</span>
-              <span class="stats-value text-primary">{{ paths.filter(p => p.direction === 'single').length }}</span>
+              <span>正向路径</span>
+              <span class="stats-value text-primary">{{ paths.filter(p => p.direction === 'forward').length }}</span>
             </div>
             <div class="stats-item">
-              <span>双向路径</span>
-              <span class="stats-value text-success">{{ paths.filter(p => p.direction === 'bidirectional').length }}</span>
+              <span>反向路径</span>
+              <span class="stats-value text-success">{{ paths.filter(p => p.direction === 'reverse').length }}</span>
             </div>
-          </div>
-        </div>
-
-        <div class="panel-card">
-          <div class="panel-title">
-            <i class="fa fa-cogs text-primary"></i>
-            路径操作
-          </div>
-          <div class="space-y-2 mt-2">
-            <button @click="testPath" class="btn-sm-primary w-full">
-              <i class="fa fa-play"></i>测试路径
-            </button>
-            <button @click="exportPaths" class="btn-sm-primary w-full">
-              <i class="fa fa-download"></i>导出路径数据
-            </button>
-            <button @click="importPaths" class="btn-sm-primary w-full">
-              <i class="fa fa-upload"></i>导入路径数据
-            </button>
           </div>
         </div>
       </aside>
@@ -276,21 +386,32 @@
             <input v-model="newPathName" type="text" class="w-full border border-gray-200 rounded px-3 py-2" placeholder="如: PA001">
           </div>
           <div>
-            <label class="block text-sm text-gray-600 mb-1">路径方向</label>
+            <label class="block text-sm text-gray-600 mb-1">路径类型</label>
             <div class="flex gap-2">
-              <button @click="newPathDirection = 'single'" :class="newPathDirection === 'single' ? 'bg-primary text-white' : 'bg-gray-200 text-gray-700'" class="flex-1 py-2 rounded">
-                单线
+              <button @click="newPathType = 'path'" :class="newPathType === 'path' ? 'bg-primary text-white' : 'bg-gray-200 text-gray-700'" class="flex-1 py-2 rounded">
+                路径（有起终点）
               </button>
-              <button @click="newPathDirection = 'bidirectional'" :class="newPathDirection === 'bidirectional' ? 'bg-success text-white' : 'bg-gray-200 text-gray-700'" class="flex-1 py-2 rounded">
-                双向
+              <button @click="newPathType = 'pathLine'" :class="newPathType === 'pathLine' ? 'bg-success text-white' : 'bg-gray-200 text-gray-700'" class="flex-1 py-2 rounded">
+                路径线（无起终点）
+              </button>
+            </div>
+          </div>
+          <div>
+            <label class="block text-sm text-gray-600 mb-1">行驶方向</label>
+            <div class="flex gap-2">
+              <button @click="newPathDirection = 'forward'" :class="newPathDirection === 'forward' ? 'bg-primary text-white' : 'bg-gray-200 text-gray-700'" class="flex-1 py-2 rounded">
+                正向
+              </button>
+              <button @click="newPathDirection = 'reverse'" :class="newPathDirection === 'reverse' ? 'bg-success text-white' : 'bg-gray-200 text-gray-700'" class="flex-1 py-2 rounded">
+                反向
               </button>
             </div>
           </div>
           <div>
             <label class="block text-sm text-gray-600 mb-1">路径颜色</label>
             <div class="flex gap-2">
-              <button 
-                v-for="color in pathColors" 
+              <button
+                v-for="color in pathColors"
                 :key="color"
                 @click="newPathColor = color"
                 class="w-8 h-8 rounded"
@@ -327,17 +448,23 @@ export default {
   name: 'PathManagePage',
   data() {
     return {
+      pathTab: 'path',
       isRecording: false,
+      recordingStep: 1,
+      recordingStartPoint: null,
+      recordingEndPoint: null,
       recordingPoints: [],
-      addPathMode: false,
-      editPathMode: false,
+      tempPath: null,
       selectedPathId: null,
       showAddDialog: false,
       newPathName: '',
-      newPathDirection: 'single',
+      newPathDirection: 'forward',
       newPathColor: '#409eff',
+      newPathType: 'path',
       isAddingNewPath: false,
       pathColors: ['#409eff', '#67c23a', '#e6a23c', '#f56c6c', '#909399'],
+      selectedConnectPointId: null,
+      connectPointFirst: null,
       allPoints: [
         { id: 'P101', name: 'P101(起点)', x: 100, y: 200, type: 'start' },
         { id: 'P102', name: 'P102', x: 180, y: 200, type: 'normal' },
@@ -350,9 +477,12 @@ export default {
         {
           id: 'path-1',
           name: 'PA001',
-          direction: 'single',
+          direction: 'forward',
           color: '#409eff',
           curveIntensity: 0,
+          type: 'path',
+          startName: 'P101',
+          endName: 'P102',
           points: [
             { x: 100, y: 200 },
             { x: 180, y: 200 }
@@ -361,9 +491,12 @@ export default {
         {
           id: 'path-2',
           name: 'PA002',
-          direction: 'bidirectional',
+          direction: 'reverse',
           color: '#67c23a',
           curveIntensity: -20,
+          type: 'path',
+          startName: 'P102',
+          endName: 'P103',
           points: [
             { x: 180, y: 200 },
             { x: 180, y: 130 }
@@ -372,69 +505,76 @@ export default {
         {
           id: 'path-3',
           name: 'PA003',
-          direction: 'single',
+          direction: 'forward',
           color: '#409eff',
           curveIntensity: 30,
+          type: 'path',
+          startName: 'P103',
+          endName: 'P104',
           points: [
             { x: 180, y: 130 },
             { x: 280, y: 130 }
           ]
         },
         {
-          id: 'path-4',
-          name: 'PA004',
-          direction: 'bidirectional',
-          color: '#67c23a',
-          curveIntensity: -30,
+          id: 'pathline-1',
+          name: 'PL001',
+          direction: 'forward',
+          color: '#e6a23c',
+          curveIntensity: 0,
+          type: 'pathLine',
+          startName: '',
+          endName: '',
           points: [
             { x: 280, y: 130 },
             { x: 280, y: 260 }
           ]
         },
         {
-          id: 'path-5',
-          name: 'PA005',
-          direction: 'single',
-          color: '#409eff',
-          curveIntensity: 10,
+          id: 'path-4',
+          name: 'PA004',
+          direction: 'reverse',
+          color: '#67c23a',
+          curveIntensity: -30,
+          type: 'path',
+          startName: 'P105',
+          endName: 'P106',
           points: [
             { x: 280, y: 260 },
             { x: 380, y: 260 }
           ]
         }
-      ],
-      isDraggingControl: false,
-      draggedPathId: null,
-      isRecording: false,
-      isAddingNewPath: false
+      ]
     };
   },
   computed: {
     selectedPath() {
       return this.paths.find(p => p.id === this.selectedPathId) || {};
     },
-    recordingSvgPath() {
-      if (this.recordingPoints.length < 2) return '';
-      return this.generateSvgPath(this.recordingPoints, 0);
-    },
     currentTime() {
       return new Date().toLocaleString('zh-CN');
+    },
+    pathsWithEndpoints() {
+      return this.paths.filter(p => p.type === 'path');
+    },
+    pathLinesWithoutEndpoints() {
+      return this.paths.filter(p => p.type === 'pathLine');
     }
   },
   methods: {
     generateSvgPath(points, curveIntensity = 0) {
       if (points.length < 2) return '';
       let d = `M${points[0].x},${points[0].y}`;
-      
+
       const start = points[0];
       const end = points[1];
       const midX = (start.x + end.x) / 2;
       const midY = (start.y + end.y) / 2;
-      
+
       const dx = end.x - start.x;
       const dy = end.y - start.y;
       const length = Math.sqrt(dx * dx + dy * dy);
-      
+
       if (length > 0) {
         const perpX = -dy / length;
         const perpY = dx / length;
@@ -445,34 +585,82 @@ export default {
       } else {
         d += ` L${end.x},${end.y}`;
       }
-      
+
       return d;
     },
-    togglePathRecording() {
-      if (this.isRecording) {
-        if (this.recordingPoints.length >= 2) {
-          this.finishRecording();
-        } else {
-          this.isRecording = false;
-          this.recordingPoints = [];
-        }
-      } else {
-        this.isRecording = true;
-        this.recordingPoints = [];
-        this.isAddingNewPath = false;
+    startRecording() {
+      this.isRecording = true;
+      this.recordingStep = 1;
+      this.recordingStartPoint = null;
+      this.recordingEndPoint = null;
+      this.tempPath = null;
+      this.recordingPoints = [];
+      this.isAddingNewPath = false;
+    },
+    confirmStartPoint() {
+      if (!this.recordingStartPoint) {
+        alert('请先在地图上点击确定起点！');
+        return;
       }
+      this.recordingStep = 2;
+    },
+    confirmEndPoint() {
+      if (!this.recordingEndPoint) {
+        alert('请先在地图上点击确定终点！');
+        return;
+      }
+      this.recordingStep = 3;
+      this.recordingPoints = [this.recordingStartPoint, this.recordingEndPoint];
+      this.tempPath = this.generateSvgPath(this.recordingPoints, 0);
+    },
+    saveRecording() {
+      if (!this.recordingStartPoint || !this.recordingEndPoint) {
+        alert('请先确定起点和终点！');
+        return;
+      }
+      const newPath = {
+        id: 'path-' + Date.now(),
+        name: 'PA' + (this.paths.length + 1).toString().padStart(3, '0'),
+        direction: 'forward',
+        color: '#409eff',
+        curveIntensity: 0,
+        type: 'path',
+        startName: '起点',
+        endName: '终点',
+        points: [this.recordingStartPoint, this.recordingEndPoint]
+      };
+      this.paths.push(newPath);
+      this.isRecording = false;
+      this.recordingStep = 1;
+      this.recordingStartPoint = null;
+      this.recordingEndPoint = null;
+      this.tempPath = null;
+      this.recordingPoints = [];
+    },
+    cancelRecording() {
+      this.isRecording = false;
+      this.recordingStep = 1;
+      this.recordingStartPoint = null;
+      this.recordingEndPoint = null;
+      this.tempPath = null;
+      this.recordingPoints = [];
     },
     handleMapClick(event) {
       if (!this.isRecording && !this.isAddingNewPath) return;
+      
       const mapArea = event.currentTarget;
       const rect = mapArea.getBoundingClientRect();
       const x = event.clientX - rect.left + mapArea.scrollLeft;
       const y = event.clientY - rect.top + mapArea.scrollTop;
-      this.recordingPoints.push({ x, y });
-    },
-    undoRecordingPoint() {
-      if (this.recordingPoints.length > 0) {
-        this.recordingPoints.pop();
+      
+      if (this.isRecording) {
+        if (this.recordingStep === 1) {
+          this.recordingStartPoint = { x, y };
+        } else if (this.recordingStep === 2) {
+          this.recordingEndPoint = { x, y };
+        }
+      } else {
+        this.recordingPoints.push({ x, y });
       }
     },
     finishRecording() {
@@ -485,9 +673,12 @@ export default {
       const newPath = {
         id: 'path-' + Date.now(),
         name: this.isAddingNewPath ? this.newPathName : 'PA' + (this.paths.length + 1).toString().padStart(3, '0'),
-        direction: this.isAddingNewPath ? this.newPathDirection : 'single',
+        direction: this.isAddingNewPath ? this.newPathDirection : 'forward',
         color: this.isAddingNewPath ? this.newPathColor : '#409eff',
         curveIntensity: 0,
+        type: this.isAddingNewPath ? this.newPathType : 'path',
+        startName: this.isAddingNewPath && this.newPathType === 'path' ? '起点' : '',
+        endName: this.isAddingNewPath && this.newPathType === 'path' ? '终点' : '',
         points: [this.recordingPoints[0], this.recordingPoints[this.recordingPoints.length - 1]]
       };
       this.paths.push(newPath);
@@ -505,21 +696,42 @@ export default {
       this.recordingPoints = [];
     },
     selectPath(pathId) {
-      if (this.editPathMode) {
-        this.selectedPathId = pathId;
+      this.selectedPathId = this.selectedPathId === pathId ? null : pathId;
+    },
+    selectPointForConnect(point) {
+      if (!this.connectPointFirst) {
+        this.connectPointFirst = point.id;
+        this.selectedConnectPointId = point.id;
       } else {
-        this.selectedPathId = this.selectedPathId === pathId ? null : pathId;
+        this.selectedConnectPointId = point.id;
       }
     },
-    deleteSelectedPath() {
-      if (!this.selectedPathId) {
-        alert('请先选择要删除的路径！');
-        return;
-      }
-      if (confirm('确定要删除此路径吗？')) {
-        this.paths = this.paths.filter(p => p.id !== this.selectedPathId);
-        this.selectedPathId = null;
-      }
+    getSelectedConnectPointName() {
+      const point = this.allPoints.find(p => p.id === this.selectedConnectPointId);
+      return point ? point.name : '';
+    },
+    createPathLineFromPoints() {
+      const firstPoint = this.allPoints.find(p => p.id === this.connectPointFirst);
+      const secondPoint = this.allPoints.find(p => p.id === this.selectedConnectPointId);
+      if (!firstPoint || !secondPoint) return;
+
+      const newPathLine = {
+        id: 'pathline-' + Date.now(),
+        name: 'PL' + (this.paths.filter(p => p.type === 'pathLine').length + 1).toString().padStart(3, '0'),
+        direction: 'forward',
+        color: '#e6a23c',
+        curveIntensity: 0,
+        type: 'pathLine',
+        startName: '',
+        endName: '',
+        points: [
+          { x: firstPoint.x, y: firstPoint.y },
+          { x: secondPoint.x, y: secondPoint.y }
+        ]
+      };
+      this.paths.push(newPathLine);
+      this.connectPointFirst = null;
+      this.selectedConnectPointId = null;
     },
     getPathLength(path) {
       if (!path.points || path.points.length < 2) return '0';
@@ -534,47 +746,6 @@ export default {
     saveAllPaths() {
       localStorage.setItem('robot_paths', JSON.stringify(this.paths));
       alert('路径配置已保存！');
-    },
-    testPath() {
-      if (!this.selectedPathId) {
-        alert('请先选择要测试的路径！');
-        return;
-      }
-      alert('正在测试路径: ' + this.selectedPath.name);
-    },
-    exportPaths() {
-      const data = JSON.stringify(this.paths, null, 2);
-      const blob = new Blob([data], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = 'robot_paths.json';
-      a.click();
-      URL.revokeObjectURL(url);
-    },
-    importPaths() {
-      const input = document.createElement('input');
-      input.type = 'file';
-      input.accept = '.json';
-      input.onchange = (e) => {
-        const file = e.target.files[0];
-        if (file) {
-          const reader = new FileReader();
-          reader.onload = (e) => {
-            try {
-              const data = JSON.parse(e.target.result);
-              if (Array.isArray(data)) {
-                this.paths = data;
-                alert('路径数据导入成功！');
-              }
-            } catch (err) {
-              alert('导入失败，请检查文件格式！');
-            }
-          };
-          reader.readAsText(file);
-        }
-      };
-      input.click();
     }
   },
   watch: {

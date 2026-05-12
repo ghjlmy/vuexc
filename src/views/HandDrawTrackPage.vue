@@ -9,6 +9,10 @@
         <h1 class="text-lg font-bold text-gray-800">手绘轨道</h1>
       </div>
       <div class="flex items-center gap-3">
+        <button @click="rebuildTrack" class="bg-warning hover:bg-warning/90 text-white px-4 py-1.5 rounded flex items-center gap-1 transition">
+          <i class="fa fa-refresh"></i>
+          <span>重新建轨</span>
+        </button>
         <button @click="saveTracks" class="bg-success hover:bg-success/90 text-white px-4 py-1.5 rounded flex items-center gap-1 transition">
           <i class="fa fa-save"></i>
           <span>保存轨道</span>
@@ -19,10 +23,19 @@
     <main class="flex-1 flex overflow-hidden">
       <section class="flex-1 bg-white m-4 rounded shadow-sm overflow-hidden relative">
         <img src="/src/assets/image.png" alt="地图背景" class="w-full h-full object-cover" />
-        <svg class="absolute inset-0 w-full h-full" @click="handleMapClick" @contextmenu.prevent="handleRightClick" @dblclick="finishCreate">
+        <svg class="absolute inset-0 w-full h-full" @click="handleMapClick" @contextmenu.prevent @dblclick="finishCreate">
           <defs>
-            <marker id="arrow" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
-              <polygon points="0 0, 10 3.5, 0 7" fill="currentColor" />
+            <marker id="arrow-blue" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+              <polygon points="0 0, 10 3.5, 0 7" fill="#409eff" />
+            </marker>
+            <marker id="arrow-green" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+              <polygon points="0 0, 10 3.5, 0 7" fill="#67c23a" />
+            </marker>
+            <marker id="arrow-orange" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+              <polygon points="0 0, 10 3.5, 0 7" fill="#e6a23c" />
+            </marker>
+            <marker id="arrow-red" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+              <polygon points="0 0, 10 3.5, 0 7" fill="#f56c6c" />
             </marker>
           </defs>
 
@@ -30,10 +43,10 @@
             <path
               :d="getTrackPath(track)"
               :stroke="track.color"
-              stroke-width="5"
+              stroke-width="3"
               fill="none"
               stroke-linecap="round"
-              :marker-end="track.direction === 'single' ? 'url(#arrow)' : ''"
+              :marker-end="getArrowMarker(track.color)"
               class="cursor-pointer"
               @click.stop="selectTrack(track)"
             />
@@ -62,11 +75,11 @@
             <circle
               :cx="point.x"
               :cy="point.y"
-              :r="creatingTrackStartPoint === point || creatingTrackEndPoint === point ? 12 : 10"
+              :r="drawingStartPoint === point ? 12 : 10"
               :fill="getPointColor(point.type)"
               stroke="white"
               stroke-width="2"
-              class="pointer-events-none hover:opacity-80"
+              class="pointer-events-none"
             />
             <polygon
               :points="getArrowPoints(point)"
@@ -84,8 +97,8 @@
           </g>
 
           <path
-            v-if="creatingTrackStartPoint && mousePosition"
-            :d="`M${creatingTrackStartPoint.x},${creatingTrackStartPoint.y} Q${(creatingTrackStartPoint.x + mousePosition.x)/2},${(creatingTrackStartPoint.y + mousePosition.y)/2} ${mousePosition.x},${mousePosition.y}`"
+            v-if="drawingStartPoint && mousePosition"
+            :d="`M${drawingStartPoint.x},${drawingStartPoint.y} Q${(drawingStartPoint.x + mousePosition.x)/2},${(drawingStartPoint.y + mousePosition.y)/2} ${mousePosition.x},${mousePosition.y}`"
             stroke="#666"
             stroke-width="3"
             stroke-dasharray="8 4"
@@ -94,31 +107,23 @@
         </svg>
 
         <div class="absolute top-4 left-4 flex gap-2 bg-white p-2 rounded shadow">
-          <button @click="mode = 'create'" :class="mode === 'create' ? 'bg-primary text-white' : 'bg-gray-100 text-gray-700'" class="px-3 py-1.5 rounded text-sm flex items-center gap-1">
-            <i class="fa fa-plus"></i>
-            创建轨道
-          </button>
-          <button @click="mode = 'addPoint'" :class="mode === 'addPoint' ? 'bg-success text-white' : 'bg-gray-100 text-gray-700'" class="px-3 py-1.5 rounded text-sm flex items-center gap-1">
-            <i class="fa fa-map-marker"></i>
-            添加点位
+          <button @click="mode = 'draw'" :class="mode === 'draw' ? 'bg-primary text-white' : 'bg-gray-100 text-gray-700'" class="px-3 py-1.5 rounded text-sm flex items-center gap-1">
+            <i class="fa fa-pencil"></i>
+            手绘路径
           </button>
           <button @click="mode = 'edit'" :class="mode === 'edit' ? 'bg-warning text-white' : 'bg-gray-100 text-gray-700'" class="px-3 py-1.5 rounded text-sm flex items-center gap-1">
-            <i class="fa fa-pencil"></i>
+            <i class="fa fa-sliders"></i>
             编辑轨道
-          </button>
-          <button v-if="mode === 'addPoint'" @click="undoLastPoint" class="px-3 py-1.5 rounded text-sm bg-gray-100 text-gray-700 flex items-center gap-1">
-            <i class="fa fa-undo"></i>
-            撤销点位
           </button>
         </div>
 
-        <div v-if="mode === 'create'" class="absolute top-4 right-4 bg-blue-50 p-3 rounded shadow text-xs text-blue-700">
+        <div v-if="mode === 'draw'" class="absolute top-4 right-4 bg-blue-50 p-3 rounded shadow text-xs text-blue-700">
           <i class="fa fa-info-circle mr-1"></i>
-          点击两个点位来创建轨道
+          点击两个点位创建路径，再次点击链接上一条线的终点，形成连续路径
         </div>
-        <div v-if="mode === 'addPoint'" class="absolute top-4 right-4 bg-green-50 p-3 rounded shadow text-xs text-green-700">
+        <div v-if="mode === 'edit'" class="absolute top-4 right-4 bg-yellow-50 p-3 rounded shadow text-xs text-yellow-700">
           <i class="fa fa-info-circle mr-1"></i>
-          在地图上点击添加新点位，右键撤销最后一个
+          点击轨道选中，可调整曲度、重命名、删除
         </div>
       </section>
 
@@ -129,7 +134,7 @@
               <i class="fa fa-sliders text-primary"></i>
               轨道属性
             </h3>
-            <button @click="deleteSelectedTrack" class="text-danger hover:text-danger/80 text-sm">
+            <button @click="showDeleteTrackConfirm" class="text-danger hover:text-danger/80 text-sm">
               <i class="fa fa-trash"></i>
             </button>
           </div>
@@ -138,18 +143,6 @@
             <div>
               <label class="block text-xs text-gray-500 mb-1">轨道名称</label>
               <input v-model="selectedTrack.name" type="text" class="w-full px-2 py-1 border border-gray-200 rounded text-sm" />
-            </div>
-
-            <div>
-              <label class="block text-xs text-gray-500 mb-1">轨道方向</label>
-              <div class="flex gap-2">
-                <button @click="selectedTrack.direction = 'single'" :class="selectedTrack.direction === 'single' ? 'bg-primary text-white' : 'bg-gray-200 text-gray-700'" class="flex-1 py-1.5 rounded text-xs transition">
-                  单线
-                </button>
-                <button @click="selectedTrack.direction = 'bidirectional'" :class="selectedTrack.direction === 'bidirectional' ? 'bg-success text-white' : 'bg-gray-200 text-gray-700'" class="flex-1 py-1.5 rounded text-xs transition">
-                  双向
-                </button>
-              </div>
             </div>
 
             <div>
@@ -174,23 +167,6 @@
         </div>
 
         <div class="mb-4">
-          <h3 class="text-sm font-bold text-gray-700 mb-2 flex items-center gap-1">
-            <i class="fa fa-list text-primary"></i>
-            可用点位
-          </h3>
-          <div class="space-y-1 max-h-48 overflow-y-auto">
-            <div
-              v-for="point in points"
-              :key="point.id"
-              class="flex items-center gap-2 p-2 rounded hover:bg-gray-50 text-xs"
-            >
-              <div class="w-3 h-3 rounded-full" :style="{ backgroundColor: getPointColor(point.type) }"></div>
-              <span>{{ point.name }}</span>
-            </div>
-          </div>
-        </div>
-
-        <div class="mb-4">
           <h3 class="text-sm font-bold text-gray-700 mb-2 flex items-center justify-between">
             <span class="flex items-center gap-1">
               <i class="fa fa-road text-primary"></i>
@@ -198,24 +174,64 @@
             </span>
             <span class="text-xs text-gray-500">{{ tracks.length }}条</span>
           </h3>
-          <div class="space-y-1 max-h-36 overflow-y-auto">
+          <div class="space-y-1 max-h-64 overflow-y-auto">
             <div
               v-for="track in tracks"
               :key="track.id"
               @click="selectTrack(track)"
               :class="selectedTrackId === track.id ? 'bg-primary/10 border-primary' : 'hover:bg-gray-50 border-gray-200'"
-              class="flex items-center justify-between p-2 rounded border text-xs cursor-pointer"
+              class="p-2 rounded border text-xs cursor-pointer"
             >
-              <div class="flex items-center gap-2">
-                <div class="w-3 h-3 rounded-full" :style="{ backgroundColor: track.color }"></div>
-                <span>{{ track.name }}</span>
+              <div class="flex items-center justify-between mb-1">
+                <div class="flex items-center gap-2">
+                  <div class="w-3 h-3 rounded-full" :style="{ backgroundColor: track.color }"></div>
+                  <span class="font-medium">{{ track.name }}</span>
+                </div>
               </div>
-              <span class="text-gray-400">{{ track.direction === 'single' ? '单线' : '双向' }}</span>
+              <div class="text-gray-500 pl-5">
+                启动点: {{ track.startPoint.name || '-' }} → 停止点: {{ track.endPoint.name || '-' }}
+              </div>
             </div>
           </div>
         </div>
       </aside>
     </main>
+
+    <div v-if="showDeleteConfirm" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+      <div class="bg-white rounded-lg shadow-xl p-6 w-80 text-center">
+        <div class="w-16 h-16 bg-danger/20 rounded-full flex items-center justify-center mx-auto mb-4">
+          <i class="fa fa-exclamation-triangle text-3xl text-danger"></i>
+        </div>
+        <h3 class="text-lg font-semibold text-gray-800 mb-2">确认删除</h3>
+        <p class="text-gray-500 text-sm mb-4">确定要删除轨道 "{{ selectedTrack?.name }}" 吗？此操作不可撤销。</p>
+        <div class="flex gap-2">
+          <button @click="showDeleteConfirm = false" class="flex-1 py-2 border border-gray-200 rounded text-gray-700 hover:bg-gray-50 transition">
+            取消
+          </button>
+          <button @click="confirmDeleteTrack" class="flex-1 py-2 bg-danger text-white rounded hover:bg-danger/90 transition">
+            确认删除
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div v-if="showRebuildConfirm" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+      <div class="bg-white rounded-lg shadow-xl p-6 w-80 text-center">
+        <div class="w-16 h-16 bg-warning/20 rounded-full flex items-center justify-center mx-auto mb-4">
+          <i class="fa fa-refresh text-3xl text-warning"></i>
+        </div>
+        <h3 class="text-lg font-semibold text-gray-800 mb-2">重新建轨</h3>
+        <p class="text-gray-500 text-sm mb-4">确定要重新建设整段轨道吗？当前所有轨道将被清除。</p>
+        <div class="flex gap-2">
+          <button @click="showRebuildConfirm = false" class="flex-1 py-2 border border-gray-200 rounded text-gray-700 hover:bg-gray-50 transition">
+            取消
+          </button>
+          <button @click="confirmRebuild" class="flex-1 py-2 bg-warning text-white rounded hover:bg-warning/90 transition">
+            确认重建
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -236,35 +252,33 @@ export default {
         {
           id: 'T1',
           name: '轨道1-入库到分拣',
-          startPoint: { id: 'P101', x: 180, y: 380 },
-          endPoint: { id: 'P102', x: 220, y: 380 },
+          startPoint: { id: 'P101', x: 180, y: 380, name: 'P101-入库口' },
+          endPoint: { id: 'P102', x: 220, y: 380, name: 'P102-分拣区' },
           controlX: 200,
           controlY: 330,
           curveIntensity: -50,
-          direction: 'single',
           color: '#409eff',
         },
         {
           id: 'T2',
           name: '轨道2-分拣到充电',
-          startPoint: { id: 'P102', x: 220, y: 380 },
-          endPoint: { id: 'P103', x: 220, y: 250 },
+          startPoint: { id: 'P102', x: 220, y: 380, name: 'P102-分拣区' },
+          endPoint: { id: 'P103', x: 220, y: 250, name: 'P103-充电位' },
           controlX: 170,
           controlY: 315,
           curveIntensity: -50,
-          direction: 'bidirectional',
           color: '#67c23a',
         },
       ],
-      mode: 'create',
+      mode: 'draw',
       selectedTrackId: null,
-      creatingTrackStartPoint: null,
-      creatingTrackEndPoint: null,
+      drawingStartPoint: null,
       mousePosition: null,
       curveIntensity: 0,
       isDraggingControl: false,
       dragTrackId: null,
-      newPointCounter: 7
+      showDeleteConfirm: false,
+      showRebuildConfirm: false
     };
   },
   computed: {
@@ -276,6 +290,15 @@ export default {
     this.setupMapEvents();
   },
   methods: {
+    getArrowMarker(color) {
+      const colorMap = {
+        '#409eff': 'arrow-blue',
+        '#67c23a': 'arrow-green',
+        '#e6a23c': 'arrow-orange',
+        '#f56c6c': 'arrow-red'
+      };
+      return `url(#${colorMap[color] || 'arrow-blue'})`;
+    },
     setupMapEvents() {
       const svg = document.querySelector('svg');
       if (!svg) return;
@@ -309,73 +332,35 @@ export default {
     },
 
     handleMapClick(e) {
-      if (this.mode === 'addPoint') {
-        const svg = e.currentTarget;
-        const rect = svg.getBoundingClientRect();
-        const x = e.clientX - rect.left;
-        const y = e.clientY - rect.top;
-        
-        const newPoint = {
-          id: 'P' + String(this.newPointCounter).padStart(3, '0'),
-          name: 'P' + String(this.newPointCounter).padStart(3, '0') + '-新点位',
-          x: x,
-          y: y,
-          type: 'nav',
-          rotation: 0
-        };
-        this.points.push(newPoint);
-        this.newPointCounter++;
-      } else if (!e.target.closest('path') && !e.target.closest('circle')) {
+      if (!e.target.closest('path') && !e.target.closest('circle')) {
         this.selectedTrackId = null;
       }
     },
 
-    handleRightClick() {
-      if (this.mode === 'addPoint') {
-        this.undoLastPoint();
-      } else if (this.creatingTrackStartPoint) {
-        this.creatingTrackStartPoint = null;
-      }
-    },
-
-    undoLastPoint() {
-      if (this.points.length > 0) {
-        this.points.pop();
-        if (this.newPointCounter > 7) {
-          this.newPointCounter--;
+    handlePointClick(point) {
+      if (this.mode === 'draw') {
+        if (!this.drawingStartPoint) {
+          this.drawingStartPoint = point;
+        } else if (point.id !== this.drawingStartPoint.id) {
+          const newId = 'T' + String(this.tracks.length + 1);
+          const newTrack = {
+            id: newId,
+            name: `轨道${this.tracks.length + 1}`,
+            startPoint: { ...this.drawingStartPoint },
+            endPoint: { ...point },
+            controlX: (this.drawingStartPoint.x + point.x) / 2,
+            controlY: (this.drawingStartPoint.y + point.y) / 2,
+            curveIntensity: 0,
+            color: '#409eff',
+          };
+          this.tracks.push(newTrack);
+          this.drawingStartPoint = point;
         }
       }
     },
 
     finishCreate() {
-      if (this.creatingTrackStartPoint && this.creatingTrackEndPoint) {
-        this.creatingTrackStartPoint = null;
-        this.creatingTrackEndPoint = null;
-      }
-    },
-
-    handlePointClick(point) {
-      if (this.mode === 'create') {
-        if (!this.creatingTrackStartPoint) {
-          this.creatingTrackStartPoint = point;
-        } else if (point.id !== this.creatingTrackStartPoint.id) {
-          const newId = 'T' + String(this.tracks.length + 1);
-          const newTrack = {
-            id: newId,
-            name: `轨道${this.tracks.length + 1}`,
-            startPoint: { ...this.creatingTrackStartPoint },
-            endPoint: { ...point },
-            controlX: (this.creatingTrackStartPoint.x + point.x) / 2,
-            controlY: (this.creatingTrackStartPoint.y + point.y) / 2,
-            curveIntensity: 0,
-            direction: 'single',
-            color: '#409eff',
-          };
-          this.tracks.push(newTrack);
-          this.creatingTrackStartPoint = null;
-          this.creatingTrackEndPoint = null;
-        }
-      }
+      this.drawingStartPoint = null;
     },
 
     getPointColor(type) {
@@ -422,7 +407,7 @@ export default {
       const dx = track.endPoint.x - track.startPoint.x;
       const dy = track.endPoint.y - track.startPoint.y;
       const length = Math.sqrt(dx * dx + dy * dy);
-      
+
       if (length > 0) {
         const perpX = -dy / length;
         const perpY = dx / length;
@@ -449,7 +434,7 @@ export default {
       const dx = track.endPoint.x - track.startPoint.x;
       const dy = track.endPoint.y - track.startPoint.y;
       const length = Math.sqrt(dx * dx + dy * dy);
-      
+
       if (length > 0) {
         const perpX = -dy / length;
         const perpY = dx / length;
@@ -460,15 +445,29 @@ export default {
       }
     },
 
-    deleteSelectedTrack() {
+    showDeleteTrackConfirm() {
       if (!this.selectedTrackId) return;
-      if (confirm('确定要删除这条轨道吗？')) {
-        const index = this.tracks.findIndex(t => t.id === this.selectedTrackId);
-        if (index !== -1) {
-          this.tracks.splice(index, 1);
-          this.selectedTrackId = null;
-        }
+      this.showDeleteConfirm = true;
+    },
+
+    confirmDeleteTrack() {
+      const index = this.tracks.findIndex(t => t.id === this.selectedTrackId);
+      if (index !== -1) {
+        this.tracks.splice(index, 1);
+        this.selectedTrackId = null;
       }
+      this.showDeleteConfirm = false;
+    },
+
+    rebuildTrack() {
+      this.showRebuildConfirm = true;
+    },
+
+    confirmRebuild() {
+      this.tracks = [];
+      this.selectedTrackId = null;
+      this.drawingStartPoint = null;
+      this.showRebuildConfirm = false;
     },
 
     saveTracks() {

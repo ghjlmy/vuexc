@@ -1,6 +1,5 @@
 <template>
   <div class="bg-gray-50 min-h-screen flex flex-col">
-    <!-- 顶部导航 -->
     <header class="bg-white shadow-sm border-b border-gray-200 px-4 py-2 flex items-center justify-between">
       <div class="flex items-center gap-3">
         <button @click="$router.push('/main')" class="flex items-center gap-2 text-primary hover:text-primary/80 transition">
@@ -14,24 +13,20 @@
           <i class="fa fa-plus"></i>
           <span>添加点位</span>
         </button>
-        <button class="bg-warning hover:bg-warning/90 text-white px-4 py-2 rounded flex items-center gap-1 transition">
+        <button @click="showSaveConfirm = true" class="bg-warning hover:bg-warning/90 text-white px-4 py-2 rounded flex items-center gap-1 transition">
           <i class="fa fa-save"></i>
           <span>保存配置</span>
         </button>
       </div>
     </header>
 
-    <!-- 主内容 -->
     <main class="flex-1 flex">
-      <!-- 地图区域 -->
       <section class="flex-1 bg-white m-4 rounded shadow-sm overflow-hidden relative">
         <div class="w-full h-full relative overflow-hidden">
           <img src="/src/assets/image.png" alt="地图背景" class="w-full h-full object-cover" />
           <svg class="absolute inset-0 w-full h-full" @click="handleMapClick">
 
-            <!-- 点位渲染 -->
             <g v-for="point in points" :key="point.id">
-              <!-- 点的圆形 -->
               <circle
                 :cx="point.x"
                 :cy="point.y"
@@ -42,12 +37,10 @@
                 :class="selectedPointId === point.id ? 'cursor-pointer' : 'cursor-pointer hover:opacity-80'"
                 @click.stop="selectPoint(point)"
               />
-              <!-- 方向箭头 -->
               <polygon
                 :points="getArrowPoints(point)"
                 :fill="getPointColor(point.type)"
               />
-              <!-- 点位标签 -->
               <text
                 :x="point.x"
                 :y="point.y + 25"
@@ -57,7 +50,6 @@
               >{{ point.name }}</text>
             </g>
 
-            <!-- 新建点位预览 -->
             <g v-if="creatingPoint">
               <circle
                 :cx="creatingPoint.x"
@@ -77,30 +69,27 @@
           </svg>
         </div>
 
-        <!-- 缩放控制 -->
         <div class="absolute bottom-4 right-4 flex flex-col gap-2 z-10">
-          <button class="w-8 h-8 flex items-center justify-center bg-white border border-gray-200 rounded hover:border-primary transition shadow-sm">
+          <button @click="zoomIn" class="w-8 h-8 flex items-center justify-center bg-white border border-gray-200 rounded hover:border-primary transition shadow-sm">
             <i class="fa fa-plus"></i>
           </button>
-          <button class="w-8 h-8 flex items-center justify-center bg-white border border-gray-200 rounded hover:border-primary transition shadow-sm">
+          <button @click="resetZoom" class="w-8 h-8 flex items-center justify-center bg-white border border-gray-200 rounded hover:border-primary transition shadow-sm">
             <i class="fa fa-dot-circle-o"></i>
           </button>
-          <button class="w-8 h-8 flex items-center justify-center bg-white border border-gray-200 rounded hover:border-primary transition shadow-sm">
+          <button @click="zoomOut" class="w-8 h-8 flex items-center justify-center bg-white border border-gray-200 rounded hover:border-primary transition shadow-sm">
             <i class="fa fa-minus"></i>
           </button>
         </div>
       </section>
 
-      <!-- 右侧面板 -->
       <aside class="w-64 bg-white border-l border-gray-200 flex flex-col shrink-0 p-4 overflow-y-auto">
-        <!-- 点位信息面板（选中时显示） -->
         <div v-if="selectedPoint" class="mb-4 p-3 bg-gray-50 rounded-lg border border-gray-200">
           <div class="flex items-center justify-between mb-2">
             <h3 class="text-sm font-bold text-gray-700 flex items-center gap-1">
               <i class="fa fa-info-circle text-primary"></i>
               点位信息
             </h3>
-            <button @click="deletePoint" class="text-danger hover:text-danger/80 text-sm">
+            <button @click="showDeletePointConfirm" class="text-danger hover:text-danger/80 text-sm">
               <i class="fa fa-trash"></i>
             </button>
           </div>
@@ -118,7 +107,6 @@
           </div>
         </div>
 
-        <!-- 点位列表 -->
         <div class="mb-4">
           <h3 class="text-sm font-bold text-gray-700 mb-2 flex items-center gap-1">
             <i class="fa fa-list text-primary"></i>
@@ -136,14 +124,13 @@
                 <div class="w-3 h-3 rounded-full" :style="{ backgroundColor: getPointColor(point.type) }"></div>
                 <span>{{ point.name }}</span>
               </div>
-              <button @click.stop="deletePointById(point.id)" class="text-gray-400 hover:text-danger">
+              <button @click.stop="showDeletePointConfirmById(point.id)" class="text-gray-400 hover:text-danger">
                 <i class="fa fa-times"></i>
               </button>
             </div>
           </div>
         </div>
 
-        <!-- 点位统计 -->
         <div class="mb-4 p-3 bg-gray-50 rounded-lg border border-gray-200">
           <h3 class="text-sm font-bold text-gray-700 mb-2 flex items-center gap-1">
             <i class="fa fa-bar-chart text-primary"></i>
@@ -171,14 +158,12 @@
       </aside>
     </main>
 
-    <!-- 添加点位弹框 -->
     <div v-if="showAddPointDialog" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
       <div class="bg-white rounded-lg shadow-xl w-96">
         <div class="p-4 border-b border-gray-200">
           <h3 class="font-bold text-gray-800">添加点位</h3>
         </div>
         <div class="p-4 space-y-4">
-          <!-- 类型切换 -->
           <div>
             <label class="block text-sm font-medium text-gray-600 mb-2">点位来源</label>
             <div class="flex gap-2">
@@ -191,13 +176,17 @@
             </div>
           </div>
 
-          <!-- 点位名称 -->
           <div>
             <label class="block text-sm font-medium text-gray-600 mb-1">点位名称</label>
-            <input v-model="newPoint.name" type="text" class="w-full px-3 py-2 border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary text-sm" placeholder="请输入点位名称" />
+            <input v-model="newPoint.name" type="text" class="w-full px-3 py-2 border rounded focus:outline-none focus:ring-1 focus:ring-primary text-sm" :class="nameDuplicate ? 'border-danger focus:ring-danger' : 'border-gray-200 focus:ring-primary'" placeholder="请输入点位名称" />
+            <div v-if="nameDuplicate" class="text-xs text-danger mt-1">
+              <i class="fa fa-exclamation-circle mr-1"></i>点位名称已存在，请使用其他名称
+            </div>
+            <div class="text-xs text-gray-400 mt-1">
+              命名规则：P + 三位数字，如 P101、P102
+            </div>
           </div>
 
-          <!-- 点位类型 -->
           <div>
             <label class="block text-sm font-medium text-gray-600 mb-1">点位类型</label>
             <select v-model="newPoint.type" class="w-full px-3 py-2 border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-primary text-sm bg-white">
@@ -205,7 +194,6 @@
               <option value="charge">充电点</option>
               <option value="location">定位点</option>
               <option value="parking">停车点</option>
-              <option value="parking">末端辅助定位</option>
             </select>
           </div>
 
@@ -218,20 +206,55 @@
           <button @click="cancelAddPoint" class="px-4 py-2 border border-gray-200 text-gray-700 rounded hover:bg-gray-50 transition text-sm">
             取消
           </button>
-          <button @click="startCreatingPoint" :disabled="!newPoint.name" class="px-4 py-2 bg-primary text-white rounded hover:bg-primary/90 transition text-sm disabled:opacity-50 disabled:cursor-not-allowed">
+          <button @click="startCreatingPoint" :disabled="!newPoint.name || nameDuplicate" class="px-4 py-2 bg-primary text-white rounded hover:bg-primary/90 transition text-sm disabled:opacity-50 disabled:cursor-not-allowed">
             下一步
           </button>
         </div>
       </div>
     </div>
 
-    <!-- 点击提示框 -->
     <div v-if="isCreatingPoint" class="absolute top-4 left-1/2 -translate-x-1/2 bg-primary text-white px-4 py-2 rounded shadow-lg z-20">
       <i class="fa fa-info-circle mr-1"></i>
       点击地图选择点位位置，拖动鼠标可以调整方向
       <button @click="cancelCreatingPoint" class="ml-2 text-white/80 hover:text-white">
         <i class="fa fa-times"></i>
       </button>
+    </div>
+
+    <div v-if="showDeleteConfirm" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+      <div class="bg-white rounded-lg shadow-xl p-6 w-80 text-center">
+        <div class="w-16 h-16 bg-danger/20 rounded-full flex items-center justify-center mx-auto mb-4">
+          <i class="fa fa-exclamation-triangle text-3xl text-danger"></i>
+        </div>
+        <h3 class="text-lg font-semibold text-gray-800 mb-2">确认删除</h3>
+        <p class="text-gray-500 text-sm mb-4">确定要删除点位 "{{ deleteTargetName }}" 吗？此操作不可撤销。</p>
+        <div class="flex gap-2">
+          <button @click="showDeleteConfirm = false" class="flex-1 py-2 border border-gray-200 rounded text-gray-700 hover:bg-gray-50 transition">
+            取消
+          </button>
+          <button @click="confirmDeletePoint" class="flex-1 py-2 bg-danger text-white rounded hover:bg-danger/90 transition">
+            确认删除
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div v-if="showSaveConfirm" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+      <div class="bg-white rounded-lg shadow-xl p-6 w-80 text-center">
+        <div class="w-16 h-16 bg-warning/20 rounded-full flex items-center justify-center mx-auto mb-4">
+          <i class="fa fa-save text-3xl text-warning"></i>
+        </div>
+        <h3 class="text-lg font-semibold text-gray-800 mb-2">确认保存</h3>
+        <p class="text-gray-500 text-sm mb-4">确定要保存当前点位配置吗？这将覆盖之前的配置。</p>
+        <div class="flex gap-2">
+          <button @click="showSaveConfirm = false" class="flex-1 py-2 border border-gray-200 rounded text-gray-700 hover:bg-gray-50 transition">
+            取消
+          </button>
+          <button @click="confirmSave" class="flex-1 py-2 bg-warning text-white rounded hover:bg-warning/90 transition">
+            确认保存
+          </button>
+        </div>
+      </div>
     </div>
   </div>
 </template>
@@ -260,12 +283,25 @@ export default {
       creatingPoint: null,
       isAdjustingDirection: false,
       adjustPointId: null,
+      showDeleteConfirm: false,
+      showSaveConfirm: false,
+      deleteTargetId: null,
+      zoomLevel: 1,
     };
   },
   computed: {
     selectedPoint() {
       return this.points.find(p => p.id === this.selectedPointId);
     },
+    nameDuplicate() {
+      if (!this.newPoint.name) return false;
+      return this.points.some(p => p.name === this.newPoint.name.trim());
+    },
+    deleteTargetName() {
+      if (!this.deleteTargetId) return '';
+      const point = this.points.find(p => p.id === this.deleteTargetId);
+      return point ? point.name : '';
+    }
   },
   mounted() {
     this.setupMapEvents();
@@ -289,7 +325,6 @@ export default {
       const y = e.clientY - rect.top;
 
       if (!this.creatingPoint) {
-        // 第一次点击：创建临时点
         this.creatingPoint = {
           id: 'TEMP',
           x: x,
@@ -298,7 +333,6 @@ export default {
           rotation: 0,
         };
       } else {
-        // 第二次点击：完成创建
         const newId = 'P' + String(this.points.length + 101).padStart(3, '0');
         this.points.push({
           id: newId,
@@ -403,6 +437,7 @@ export default {
     },
 
     startCreatingPoint() {
+      if (!this.newPoint.name || this.nameDuplicate) return;
       this.showAddPointDialog = false;
       this.isCreatingPoint = true;
       this.creatingPoint = null;
@@ -414,22 +449,57 @@ export default {
       this.newPoint = { name: '', type: 'nav', source: 'hand' };
     },
 
-    deletePoint() {
+    showDeletePointConfirm() {
       if (!this.selectedPointId) return;
-      if (confirm('确定要删除这个点位吗？')) {
-        this.deletePointById(this.selectedPointId);
-      }
+      this.deleteTargetId = this.selectedPointId;
+      this.showDeleteConfirm = true;
     },
 
-    deletePointById(id) {
-      const index = this.points.findIndex(p => p.id === id);
+    showDeletePointConfirmById(id) {
+      this.deleteTargetId = id;
+      this.showDeleteConfirm = true;
+    },
+
+    confirmDeletePoint() {
+      const index = this.points.findIndex(p => p.id === this.deleteTargetId);
       if (index !== -1) {
         this.points.splice(index, 1);
-        if (this.selectedPointId === id) {
+        if (this.selectedPointId === this.deleteTargetId) {
           this.selectedPointId = null;
         }
       }
+      this.showDeleteConfirm = false;
+      this.deleteTargetId = null;
     },
+
+    confirmSave() {
+      localStorage.setItem('robot_points', JSON.stringify(this.points));
+      this.showSaveConfirm = false;
+      alert('点位配置已保存！');
+    },
+
+    zoomIn() {
+      this.zoomLevel = Math.min(this.zoomLevel + 0.1, 2);
+      this.applyZoom();
+    },
+
+    zoomOut() {
+      this.zoomLevel = Math.max(this.zoomLevel - 0.1, 0.5);
+      this.applyZoom();
+    },
+
+    resetZoom() {
+      this.zoomLevel = 1;
+      this.applyZoom();
+    },
+
+    applyZoom() {
+      const svg = document.querySelector('svg');
+      if (svg) {
+        svg.style.transform = `scale(${this.zoomLevel})`;
+        svg.style.transformOrigin = 'center center';
+      }
+    }
   },
 };
 </script>

@@ -20,7 +20,12 @@
       <section class="flex-1 relative overflow-hidden bg-white border-r border-gray-200">
         <div class="absolute inset-0">
           <img src="/src/assets/image.png" alt="地图背景" class="w-full h-full object-cover" />
-          <svg id="mapSvg" class="absolute inset-0 w-full h-full" @click="handleMapClick">
+          <svg id="mapSvg" class="absolute inset-0 w-full h-full"
+            @mousedown="handleMapMouseDown"
+            @mousemove="handleMapMouseMove"
+            @mouseup="handleMapMouseUp"
+            @mouseleave="handleMapMouseUp"
+          >
 
             <g id="pathsLayer">
               <path d="M 180 380 L 220 380 L 220 250 L 280 250 L 280 450 L 380 450" stroke="#4080FF" stroke-width="3" fill="none" stroke-dasharray="8,4" opacity="0.9"/>
@@ -41,9 +46,33 @@
                 <animate attributeName="r" values="15;20;15" dur="1.5s" repeatCount="indefinite"/>
               </circle>
             </g>
+
+            <g v-if="carPosition">
+              <circle :cx="carPosition.x" :cy="carPosition.y" r="14" fill="#4080FF" stroke="white" stroke-width="2" opacity="0.9"/>
+              <circle :cx="carPosition.x" :cy="carPosition.y" r="5" fill="white"/>
+              <line
+                :x1="carPosition.x"
+                :y1="carPosition.y"
+                :x2="carPosition.x + Math.cos((carPosition.rotation - 90) * Math.PI / 180) * 30"
+                :y2="carPosition.y + Math.sin((carPosition.rotation - 90) * Math.PI / 180) * 30"
+                stroke="#4080FF"
+                stroke-width="3"
+                stroke-linecap="round"
+              />
+              <polygon
+                :points="getCarArrowPoints()"
+                fill="#4080FF"
+                opacity="0.9"
+              />
+              <circle :cx="carPosition.x" :cy="carPosition.y" r="20" fill="none" stroke="#4080FF" stroke-width="1" stroke-dasharray="3,3" opacity="0.5"/>
+            </g>
           </svg>
         </div>
-        <div class="absolute bottom-4 left-4 bg-white/80 backdrop-blur px-3 py-2 rounded-lg text-xs text-gray-500">
+        <div v-if="isPositioning" class="absolute bottom-4 left-4 bg-primary/90 text-white px-4 py-2 rounded-lg text-sm shadow-lg">
+          <i class="fa fa-hand-pointer-o mr-1"></i>
+          按住鼠标左键确定小车位置，移动鼠标旋转方向，松手确认
+        </div>
+        <div v-else class="absolute bottom-4 left-4 bg-white/80 backdrop-blur px-3 py-2 rounded-lg text-xs text-gray-500">
           <i class="fa fa-info-circle mr-1"></i>
           点击地图或选择点位进行定位
         </div>
@@ -56,7 +85,7 @@
             手动定位
           </h3>
           <div class="space-y-3">
-            <button @click="initPosition()" class="w-full py-2 bg-primary text-white rounded-md hover:bg-primary/90 transition flex items-center justify-center gap-2">
+            <button @click="startPositioning()" class="w-full py-2 bg-primary text-white rounded-md hover:bg-primary/90 transition flex items-center justify-center gap-2">
               <i class="fa fa-map-marker"></i>
               初始化位置设置
             </button>
@@ -91,39 +120,47 @@
           </div>
         </div>
 
-        <div class="p-4 border-b border-gray-200">
+        <div class="p-4 border-b border-gray-200" :class="!fixedStartEnabled ? 'opacity-50 pointer-events-none' : ''">
           <h3 class="font-semibold text-gray-dark mb-3 flex items-center gap-2">
             <i class="fa fa-parking text-primary"></i>
             停车点定位
+            <span v-if="!fixedStartEnabled" class="text-xs text-gray-400 ml-auto">需开启定点启动</span>
           </h3>
           <div class="space-y-3">
             <div class="text-sm text-gray-500">
               设置停车位（唯一点位），开机和关机时小车都要在这个点
             </div>
-            <select v-model="parkingPointId" class="w-full px-3 py-2 border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-primary/50 text-sm">
+            <select v-model="parkingPointId" :disabled="!fixedStartEnabled" class="w-full px-3 py-2 border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-primary/50 text-sm" :class="!fixedStartEnabled ? 'bg-gray-100' : ''">
               <option v-for="point in pointsList" :key="point.id" :value="point.id">{{ point.name }}</option>
             </select>
-            <div class="flex items-center justify-between bg-success/10 p-2 rounded-lg text-sm">
+            <div v-if="fixedStartEnabled" class="flex items-center justify-between bg-success/10 p-2 rounded-lg text-sm">
               <span class="text-success">当前停车位: {{ getParkingPointName() }}</span>
               <i class="fa fa-check-circle text-success"></i>
+            </div>
+            <div v-else class="flex items-center justify-between bg-gray-100 p-2 rounded-lg text-sm">
+              <span class="text-gray-400">请先开启定点启动</span>
+              <i class="fa fa-lock text-gray-400"></i>
             </div>
           </div>
         </div>
 
-        <div class="p-4 flex-1">
+        <div v-if="carPosition" class="p-4 flex-1">
           <h3 class="font-semibold text-gray-dark mb-3 flex items-center gap-2">
-            <i class="fa fa-th-list text-primary"></i>
-            点面板
+            <i class="fa fa-location-arrow text-primary"></i>
+            当前位置
           </h3>
-          <div class="space-y-2 max-h-60 overflow-y-auto">
-            <div v-for="point in pointsList" :key="point.id" @click="selectPoint(point)" :class="selectedPoint?.id === point.id ? 'border-primary bg-primary/5' : 'border-gray-200 hover:border-gray-300'" class="p-2 border rounded-lg cursor-pointer">
-              <div class="flex items-center justify-between">
-                <span class="text-sm font-medium">{{ point.name }}</span>
-                <span v-if="point.type" class="text-xs px-2 py-0.5 rounded" :class="point.type === 'charge' ? 'bg-orange-100 text-orange-600' : (point.type === 'location' ? 'bg-purple-100 text-purple-600' : (point.type === 'parking' ? 'bg-blue-100 text-blue-600' : 'bg-green-100 text-green-600'))">
-                  {{ point.type === 'charge' ? '充电' : (point.type === 'location' ? '定位' : (point.type === 'parking' ? '停车' : '导航')) }}
-                </span>
-              </div>
-              <div class="text-xs text-gray-500 mt-1">X: {{ point.x }}, Y: {{ point.y }}</div>
+          <div class="bg-gray-50 p-3 rounded-lg text-sm space-y-2">
+            <div class="flex justify-between">
+              <span class="text-gray-500">X坐标:</span>
+              <span class="font-medium">{{ carPosition.x.toFixed(1) }}</span>
+            </div>
+            <div class="flex justify-between">
+              <span class="text-gray-500">Y坐标:</span>
+              <span class="font-medium">{{ carPosition.y.toFixed(1) }}</span>
+            </div>
+            <div class="flex justify-between">
+              <span class="text-gray-500">方向:</span>
+              <span class="font-medium">{{ carPosition.rotation.toFixed(1) }}°</span>
             </div>
           </div>
         </div>
@@ -156,6 +193,9 @@ export default {
       parkingPointId: 'P008',
       locationFeedback: '等待定位...',
       showInitDialog: false,
+      isPositioning: false,
+      isDraggingDirection: false,
+      carPosition: null,
       pointsList: [
         { id: 'P001', name: 'P001 - 入库口', x: 180, y: 380, type: 'nav' },
         { id: 'P002', name: 'P002 - 分拣区', x: 220, y: 380, type: 'nav' },
@@ -178,12 +218,48 @@ export default {
     }
   },
   methods: {
-    handleMapClick(event) {
+    startPositioning() {
+      this.isPositioning = true;
+      this.locationFeedback = '请在地图上按住鼠标左键确定小车位置';
+      this.carPosition = null;
+    },
+    handleMapMouseDown(event) {
+      if (!this.isPositioning) return;
       const svg = event.currentTarget;
       const rect = svg.getBoundingClientRect();
       const x = event.clientX - rect.left;
       const y = event.clientY - rect.top;
-      console.log('Map clicked at:', x, y);
+      this.carPosition = { x, y, rotation: 0 };
+      this.isDraggingDirection = true;
+      this.locationFeedback = '按住鼠标移动，旋转方向，松手确认';
+    },
+    handleMapMouseMove(event) {
+      if (!this.isDraggingDirection || !this.carPosition) return;
+      const svg = event.currentTarget;
+      const rect = svg.getBoundingClientRect();
+      const x = event.clientX - rect.left;
+      const y = event.clientY - rect.top;
+      const angle = Math.atan2(y - this.carPosition.y, x - this.carPosition.x) * 180 / Math.PI + 90;
+      this.carPosition.rotation = angle;
+    },
+    handleMapMouseUp() {
+      if (this.isDraggingDirection && this.carPosition) {
+        this.isDraggingDirection = false;
+        this.isPositioning = false;
+        this.locationFeedback = `位置已确定 (${this.carPosition.x.toFixed(0)}, ${this.carPosition.y.toFixed(0)})，方向 ${this.carPosition.rotation.toFixed(1)}°`;
+      }
+    },
+    getCarArrowPoints() {
+      if (!this.carPosition) return '';
+      const angle = (this.carPosition.rotation - 90) * Math.PI / 180;
+      const tipLen = 30;
+      const tipX = this.carPosition.x + Math.cos(angle) * tipLen;
+      const tipY = this.carPosition.y + Math.sin(angle) * tipLen;
+      const base1X = tipX + Math.cos(angle + Math.PI * 0.8) * 10;
+      const base1Y = tipY + Math.sin(angle + Math.PI * 0.8) * 10;
+      const base2X = tipX + Math.cos(angle - Math.PI * 0.8) * 10;
+      const base2Y = tipY + Math.sin(angle - Math.PI * 0.8) * 10;
+      return `${tipX},${tipY} ${base1X},${base1Y} ${base2X},${base2Y}`;
     },
     selectPoint(point) {
       this.selectedPoint = point;
@@ -207,6 +283,11 @@ export default {
         alert('请先选择点位');
         return;
       }
+      this.carPosition = {
+        x: this.selectedPoint.x,
+        y: this.selectedPoint.y,
+        rotation: 0
+      };
       this.locationFeedback = `已定位到 ${this.selectedPoint.name}`;
     },
     getParkingPointName() {
