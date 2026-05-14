@@ -42,11 +42,11 @@
           <g v-for="track in tracks" :key="track.id">
             <path
               :d="getTrackPath(track)"
-              :stroke="track.color"
+              :stroke="track.direction === 'oneway' ? '#409eff' : track.color"
               stroke-width="3"
               fill="none"
               stroke-linecap="round"
-              :marker-end="getArrowMarker(track.color)"
+              :marker-end="track.direction === 'oneway' ? 'url(#arrow-blue)' : ''"
               class="cursor-pointer"
               @click.stop="selectTrack(track)"
             />
@@ -128,6 +128,30 @@
       </section>
 
       <aside class="w-64 bg-white border-l border-gray-200 flex flex-col shrink-0 p-4 overflow-y-auto">
+        <div class="mb-4">
+          <h3 class="text-sm font-bold text-gray-700 mb-2 flex items-center justify-between">
+            <span class="flex items-center gap-1">
+              <i class="fa fa-map-marker text-primary"></i>
+              可用点位
+            </span>
+            <span class="text-xs text-gray-500">{{ points.length }}个</span>
+          </h3>
+          <div class="space-y-1 max-h-48 overflow-y-auto">
+            <div
+              v-for="point in points"
+              :key="point.id"
+              :class="['p-2 rounded border text-xs cursor-pointer', drawingStartPoint?.id === point.id ? 'bg-primary/10 border-primary' : 'hover:bg-gray-50 border-gray-200']"
+              @click="handlePointClick(point)"
+            >
+              <div class="flex items-center gap-2">
+                <div class="w-3 h-3 rounded-full" :style="{ backgroundColor: getPointColor(point.type) }"></div>
+                <span>{{ point.name }}</span>
+              </div>
+              <div class="text-gray-500 text-xs mt-1">{{ point.x }}, {{ point.y }}</div>
+            </div>
+          </div>
+        </div>
+
         <div v-if="selectedTrack" class="mb-4 p-3 bg-gray-50 rounded-lg border border-gray-200">
           <div class="flex items-center justify-between mb-3">
             <h3 class="text-sm font-bold text-gray-700 flex items-center gap-1">
@@ -146,6 +170,25 @@
             </div>
 
             <div>
+              <label class="block text-xs text-gray-500 mb-1">轨道方向</label>
+              <div class="flex gap-2">
+                <button 
+                  @click="selectedTrack.direction = 'oneway'" 
+                  :class="selectedTrack.direction === 'oneway' ? 'bg-primary text-white' : 'bg-gray-100 text-gray-700'" 
+                  class="flex-1 px-3 py-1 rounded text-sm"
+                >
+                  单向
+                </button>
+                <button 
+                  @click="selectedTrack.direction = 'twoway'" 
+                  :class="selectedTrack.direction === 'twoway' ? 'bg-primary text-white' : 'bg-gray-100 text-gray-700'" 
+                  class="flex-1 px-3 py-1 rounded text-sm"
+                >
+                  双向
+                </button>
+              </div>
+            </div>
+            <div v-if="selectedTrack.direction === 'twoway'">
               <label class="block text-xs text-gray-500 mb-1">轨道颜色</label>
               <div class="flex gap-2">
                 <button @click="selectedTrack.color = '#409eff'" :class="selectedTrack.color === '#409eff' ? 'ring-2 ring-offset-1 ring-gray-400' : ''" class="w-8 h-8 rounded" style="background-color: #409eff"></button>
@@ -184,9 +227,12 @@
             >
               <div class="flex items-center justify-between mb-1">
                 <div class="flex items-center gap-2">
-                  <div class="w-3 h-3 rounded-full" :style="{ backgroundColor: track.color }"></div>
+                  <div class="w-3 h-3 rounded-full" :style="{ backgroundColor: track.direction === 'oneway' ? '#409eff' : track.color }"></div>
                   <span class="font-medium">{{ track.name }}</span>
                 </div>
+                <span :class="['text-xs px-1.5 py-0.5 rounded', track.direction === 'oneway' ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-700']">
+                  {{ track.direction === 'oneway' ? '单向' : '双向' }}
+                </span>
               </div>
               <div class="text-gray-500 pl-5">
                 启动点: {{ track.startPoint.name || '-' }} → 停止点: {{ track.endPoint.name || '-' }}
@@ -258,6 +304,7 @@ export default {
           controlY: 330,
           curveIntensity: -50,
           color: '#409eff',
+          direction: 'oneway', // oneway or twoway
         },
         {
           id: 'T2',
@@ -268,6 +315,7 @@ export default {
           controlY: 315,
           curveIntensity: -50,
           color: '#67c23a',
+          direction: 'twoway', // oneway or twoway
         },
       ],
       mode: 'draw',
@@ -352,6 +400,7 @@ export default {
             controlY: (this.drawingStartPoint.y + point.y) / 2,
             curveIntensity: 0,
             color: '#409eff',
+            direction: 'oneway', // oneway or twoway
           };
           this.tracks.push(newTrack);
           this.drawingStartPoint = point;
